@@ -52,4 +52,16 @@ def get_arg_parser() -> ArgumentParser:
         help="Output file path"
     )
 
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        help="(Optional) Exclude header row from output file"
+    )
+
+    # parser.add_argument(
+    #     "--disable-scientific-notation",
+    #     action="store_true",
+    #     help="(Optional) Disable use of scientific notation in output for very small or very large numbers"
+    # )
+
     return parser

@@ -1,5 +1,5 @@
 
-from typing import List, Union
+from typing import List, Union, NamedTuple
 import os
 import csv
 
@@ -15,6 +15,11 @@ DEMO_STRING_2 = "QMEVLY(1)AWEFLS(0.95)FAD"
 # "QMEVLY*AWEFLSFAD"
 
 
+class PeptideInfo(NamedTuple):
+    fc: float
+    p: float
+
+
 def format_peptide(
     peptide: str,
     score_threshold: float
@@ -26,6 +31,9 @@ def format_peptide(
         if char.isalpha():
             if score_buffer != "":
                 if float(score_buffer.replace("(", "").replace(")", "")) >= score_threshold:
+                    if peptide_with_asterisks != "":
+                        # Denote phospho-sites with a lowercase letter (retained later when asterisk may not be present)
+                        peptide_with_asterisks = peptide_with_asterisks[:-1] + peptide_with_asterisks[-1].lower()
                     peptide_with_asterisks += "*"
                 score_buffer = ""
             peptide_with_asterisks += char
@@ -82,50 +90,56 @@ def main() -> None:
         fc_index = header.index(args.fold_change)
         p_index = header.index(args.p_value)
 
-        with open(args.output, "w") as output_file:
+        peptides = {}
 
-            writer = csv.writer(output_file)
+        while dataset:
 
+            try:
+                row = next(dataset)
+            except StopIteration:
+                break
+
+            print("Sequence:", row[sequence_index])
+            peptide_options = format_peptide(row[sequence_index], score_threshold=PHOSPHO_SITE_SCORE_THRESHOLD)
+            print("-->", peptide_options)
+
+            # if len([True for option in peptide_options if "*" in option]) == 0:
+            #     continue  # Skip rows where no phospho-sites are above probability score threshold
+
+            position = int(row[position_index])
+            print("Position:", position)
+            peptide = choose_peptide(peptide_options, position)
+            print("Selected peptide:", peptide)
+
+            print()
+
+            if peptide is None:
+                continue  # Skip rows where phospho-site is below probability score threshold
+
+            fc = float(row[fc_index])
+            p = float(row[p_index])
+
+            stored_peptide_info = peptides.get(peptide, None)
+
+            if stored_peptide_info is None:
+                peptides[peptide] = PeptideInfo(fc=fc, p=p)
+            else:
+                if p < stored_peptide_info.p:
+                    peptides[peptide] = PeptideInfo(fc=fc, p=p)
+
+    with open(args.output, "w") as output_file:
+
+        writer = csv.writer(output_file, delimiter="\t")
+
+        if not args.no_header:
             writer.writerow(["peptide", "fc", "p"])
 
-            # n_lines = 0
-            while dataset:
-
-                try:
-                    row = next(dataset)
-                except StopIteration:
-                    break
-
-                print("Sequence:", row[sequence_index])
-                peptide_options = format_peptide(row[sequence_index], score_threshold=PHOSPHO_SITE_SCORE_THRESHOLD)
-                print("-->", peptide_options)
-
-                # if len([True for option in peptide_options if "*" in option]) == 0:
-                #     continue  # Skip rows where no phospho-sites are above probability score threshold
-
-                position = int(row[position_index])
-                print("Position:", position)
-                peptide = choose_peptide(peptide_options, position)
-                print("Selected peptide:", peptide)
-
-                print()
-
-                if peptide is None:
-                    continue  # Skip rows where phospho-site is below probability score threshold
-
-                writer.writerow([peptide, row[fc_index], row[p_index]])
-
-                # n_lines += 1
-
-    # raw_peptides = [
-    #     DEMO_STRING_1,
-    #     DEMO_STRING_2
-    # ]
-    #
-    # formatted_peptides = [
-    #     format_peptide(peptide, score_threshold=PHOSPHO_SITE_SCORE_THRESHOLD)
-    #     for peptide in raw_peptides
-    # ]
+        for peptide, peptide_info in peptides.items():
+            writer.writerow([
+                f"{peptide}",
+                f"{peptide_info.fc:.10f}",
+                f"{peptide_info.p:.10f}"
+            ])
 
 
 if __name__ == "__main__":
