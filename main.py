@@ -1,5 +1,5 @@
 
-from typing import List, Union, NamedTuple
+from typing import List, Union, NamedTuple, Optional
 import os
 import csv
 
@@ -18,6 +18,8 @@ DEMO_STRING_2 = "QMEVLY(1)AWEFLS(0.95)FAD"
 class PeptideInfo(NamedTuple):
     fc: float
     p: float
+    protein_id: Optional[str]
+    gene_name: Optional[str]
 
 
 def format_peptide(
@@ -89,6 +91,9 @@ def main() -> None:
         position_index = header.index(args.position)
         fc_index = header.index(args.fold_change)
         p_index = header.index(args.p_value)
+        if args.protein_info:
+            protein_id_index = header.index(args.protein_id)
+            gene_name_index = header.index(args.gene_name)
 
         peptides = {}
 
@@ -118,28 +123,42 @@ def main() -> None:
 
             fc = float(row[fc_index])
             p = float(row[p_index])
+            if args.protein_info:
+                protein_id = row[protein_id_index]
+                gene_name = row[gene_name_index]
+            else:
+                protein_id = None
+                gene_name = None
 
             stored_peptide_info = peptides.get(peptide, None)
 
             if stored_peptide_info is None:
-                peptides[peptide] = PeptideInfo(fc=fc, p=p)
+                peptides[peptide] = PeptideInfo(protein_id=protein_id, gene_name=gene_name, fc=fc, p=p)
             else:
                 if p < stored_peptide_info.p:
-                    peptides[peptide] = PeptideInfo(fc=fc, p=p)
+                    peptides[peptide] = PeptideInfo(protein_id=protein_id, gene_name=gene_name, fc=fc, p=p)
 
     with open(args.output, "w") as output_file:
 
         writer = csv.writer(output_file, delimiter="\t")
 
-        if not args.no_header:
+        if args.header:
             writer.writerow(["peptide", "fc", "p"])
 
         for peptide, peptide_info in peptides.items():
-            writer.writerow([
+            out_row = (
+                [
+                    f"{protein_id}",
+                    f"{gene_name}",
+                ]
+                if args.protein_info
+                else []
+            ) + [
                 f"{peptide}",
                 f"{peptide_info.fc:.10f}",
                 f"{peptide_info.p:.10f}"
-            ])
+            ]
+            writer.writerow(out_row)
 
 
 if __name__ == "__main__":

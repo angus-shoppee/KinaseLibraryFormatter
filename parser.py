@@ -45,6 +45,22 @@ def get_arg_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
+        "-g",
+        "--gene-name",
+        type=str,
+        required=False,
+        help="(If using the --protein-info flag) Name of the column containing gene names"
+    )
+
+    parser.add_argument(
+        "-i",
+        "--protein-id",
+        type=str,
+        required=False,
+        help="(If using the --protein-info flag) Name of the column containing protein IDs"
+    )
+
+    parser.add_argument(
         "-o",
         "--output",
         type=str,
@@ -53,9 +69,15 @@ def get_arg_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
-        "--no-header",
+        "--header",
         action="store_true",
-        help="(Optional) Exclude header row from output file"
+        help="(Optional) Include header row from output file"
+    )
+
+    parser.add_argument(
+        "--protein-info",
+        action="store_true",
+        help="(Optional) Include protein ID and gene name columns from output file (requires -p and -i arguments)"
     )
 
     # parser.add_argument(
