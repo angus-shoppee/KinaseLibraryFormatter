@@ -163,7 +163,7 @@ def main() -> None:
                 if p < stored_peptide_info.p:
                     peptides[peptide] = PeptideInfo(protein_id=protein_id, gene_name=gene_name, fc=fc, p=p)
 
-    with open(args.output, "w") as output_file:
+    with open(args.output, "w", newline="") as output_file:
 
         writer = csv.writer(output_file, delimiter="\t")
 
